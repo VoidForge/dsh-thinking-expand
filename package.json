@@ -1,0 +1,33 @@
+{
+  "name": "@local/dsh-thinking-expand",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Keeps only the current thinking block expanded and collapses older ones after a configurable delay.",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": ">=3.18.5 <4"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}

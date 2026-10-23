@@ -1,0 +1,5 @@
+# Thinking Focus bundle layer: one profile entry that owns the Host configuration
+# schema and (through `dsh.client`) the browser half.
+- insert:
+    - id: thinking-expand
+      name: '@local/dsh-thinking-expand'

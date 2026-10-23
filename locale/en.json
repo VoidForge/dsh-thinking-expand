@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Thinking Focus",
+    "description": "Auto-expands the current thinking block and collapses older ones after a configurable delay."
+  }
+}
