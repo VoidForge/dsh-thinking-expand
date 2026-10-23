@@ -1,25 +1,46 @@
 {
   "name": "@local/dsh-thinking-expand",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Keeps only the current thinking block expanded and collapses older ones after a configurable delay.",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "exports": {
-    ".": "./index.js",
-    "./client": "./client.js",
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
   "files": [
-    "index.js",
-    "client.js",
+    "lib/index.js",
+    "lib/index.d.ts",
+    "lib/client.js",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
     "README.md"
   ],
+  "scripts": {
+    "build": "npm run build:host && npm run build:client",
+    "build:host": "tsc -p tsconfig.build.json",
+    "build:client": "esbuild src/client.ts --bundle --format=iife --target=es2022 --charset=utf8 --outfile=lib/client.js --log-level=warning",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test": "npm run build && node --test tests/rules.test.ts tests/manifest.test.ts tests/classic-script.test.ts",
+    "check": "npm run typecheck && npm test"
+  },
   "peerDependencies": {
     "@deepseek-ai/schemastery": ">=3.18.5 <4"
+  },
+  "devDependencies": {
+    "@deepseek-ai/schemastery": "3.18.5",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "esbuild": "^0.28.2",
+    "typescript": "~5.9.3"
   },
   "dsh": {
     "bundle": {

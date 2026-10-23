@@ -1,8 +1,8 @@
 # Thinking Focus
 
-A DeepSeek Harness plugin for **DSH Desktop** that keeps only the current
-thinking block expanded in Chat, closes older ones after a configurable delay,
-and exposes its settings on the Plugins page.
+A DeepSeek Harness plugin for **DSH Desktop**, written in TypeScript, that keeps
+only the current thinking block expanded in Chat, closes older ones after a
+configurable delay, and exposes its settings on the Plugins page.
 
 ## Behavior
 
@@ -47,8 +47,46 @@ resolves package names from its real path, the Host half declares
 the running installation's copy. Verify a load with the Host
 `Config.listConfigs` inspect query before trusting a change.
 
+The built entry points in `lib/` are committed and referenced by the package
+`exports`, so neither a linked checkout nor a git install has to run a build
+script (and no pnpm build allowance is needed):
+
+```
+dsh plugin --profile desktop add github:VoidForge/dsh-thinking-expand
+```
+
 If the page does not pick up a freshly installed bundle, reload the DSH Desktop
 window or restart the app.
+
+## Development
+
+Requires Node.js 24+ (the test suite runs the TypeScript sources directly through
+Node's type stripping).
+
+```
+npm install
+npm run build      # tsc: Host half -> lib/index.js; esbuild: browser half -> lib/client.js
+npm run typecheck  # check src/ and tests/ under strict TypeScript
+npm test           # build, then node --test on the TypeScript tests
+npm run check      # typecheck + test
+```
+
+```
+src/
+  index.ts       Host half: volatile config schema + own-settings-page marker
+  client.ts      Browser half: Chat DOM engine + Plugins-page settings form
+  rules.ts       Pure decision rules (no DOM, React, or DSH imports)
+  constants.ts   Package identity shared by the patch, slots, and tests
+  types/dsh.ts   Minimal local DSH 0.2.1-rc.2 plugin-contract declarations
+tests/           TypeScript tests (rules, manifest invariants, classic script)
+lib/             Committed build output: the entry points the manifest exports
+```
+
+`lib/` is committed because DSH loads a linked checkout or a git install exactly
+as it is: nothing runs a build script on the user's machine. After changing a
+source file, run `npm run build` and commit the updated `lib/` output with it.
+`tsconfig.build.json` emits the Host half with declarations; `esbuild` bundles
+the browser half as one self-contained classic-script IIFE.
 
 ## Notes and limits
 
@@ -71,5 +109,5 @@ window or restart the app.
   the stale save instead of overwriting it. A refused or failed save keeps your
   staged edits and reports it so you can retry. If the settings namespace is not
   served, the plugin stays idle (it never acts on guessed defaults).
-- Verified against DSH `0.2.1-rc.2`; the bundle is wrapped in one classic-script
+- Verified against DSH `0.2.1-rc.2`; the browser half ships as one classic-script
   IIFE so a disable/enable cycle or HMR rebuild can execute it again safely.

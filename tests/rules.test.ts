@@ -1,23 +1,23 @@
 /**
- * Pure-rule tests for the Thinking Focus client half.
+ * Pure-rule tests for the Thinking Focus decision layer.
  *
- * These import client.js in Node, where it exposes its decision helpers instead
- * of registering the browser factory. No DOM or React is emulated here: the
- * tests cover the rules the browser engine delegates to, plus the manifest
- * invariants that make the bundle installable.
+ * These import `src/rules.ts` directly: no DOM, React, or DSH service is
+ * emulated, because the rules are the whole of the browser engine's policy.
+ * The shipped classic-script bundle is covered separately by
+ * `classic-script.test.ts`, and the manifest invariants by `manifest.test.ts`.
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
-import '../client.js'
 
-const rules = globalThis.__THINKING_FOCUS_RULES__
-assert.ok(rules, 'client.js must expose __THINKING_FOCUS_RULES__ when imported outside the page')
+import * as rules from '../src/rules.ts'
+import type {
+  BlockEntry,
+  BlockRecord,
+  EffectiveConfig,
+  SettingsDraft,
+} from '../src/rules.ts'
 
-const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
-const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
-
-const READY = Object.freeze({
+const READY: EffectiveConfig = Object.freeze({
   ready: true,
   status: 'ready',
   enabled: true,
@@ -25,37 +25,26 @@ const READY = Object.freeze({
   manualOpenProtection: true,
 })
 
-/** @returns {object} A block record with the given overrides. */
-function record(overrides = {}) {
+/** @returns A block record with the given overrides. */
+function record(overrides: Partial<BlockRecord> = {}): BlockRecord {
   return {
     manual: undefined,
     everSuperseded: false,
     supersededAt: 1000,
     manualOpenedAt: 0,
     attempts: 0,
-    lastAttemptAt: -Infinity,
+    lastExpandAt: -Infinity,
+    lastCollapseAt: -Infinity,
     lastExpanded: true,
     giveUp: false,
     ...overrides,
   }
 }
 
-/** @returns {object} An entry descriptor with the given overrides. */
-function entry(overrides = {}) {
+/** @returns An entry descriptor with the given overrides. */
+function entry(overrides: Partial<BlockEntry> = {}): BlockEntry {
   return { id: 'block', expanded: true, isLatest: false, ...overrides }
 }
-
-test('manifest identity, bundle patch, client entry, and peer declaration agree with the code', () => {
-  assert.equal(rules.packageName, manifest.name)
-  assert.equal(manifest.dsh.bundle.patch, './cordis.patch.yml')
-  assert.deepEqual(manifest.dsh.client, { platform: 'web', immediately: true })
-  assert.equal(manifest.exports['./client'], './client.js')
-  assert.equal(manifest.exports['./locale/*.json'], './locale/*.json')
-  assert.match(manifest.peerDependencies['@deepseek-ai/schemastery'], /^>=3\.18\.5 <4$/)
-  assert.match(patch, new RegExp('id:\\s*' + rules.settingsEntryId))
-  const escapedName = manifest.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  assert.match(patch, new RegExp(escapedName))
-})
 
 test('a loading snapshot never activates the engine', () => {
   const config = rules.normalizeConfigSnapshot({ status: 'loading', value: undefined })
@@ -68,7 +57,10 @@ test('a loading snapshot never activates the engine', () => {
 test('a ready snapshot applies defaults for missing fields', () => {
   assert.deepEqual(rules.normalizeConfigSnapshot({ status: 'ready', value: {} }), READY)
   assert.deepEqual(
-    rules.normalizeConfigSnapshot({ status: 'ready', value: { enabled: false, collapseDelay: 30, manualOpenProtection: false } }),
+    rules.normalizeConfigSnapshot({
+      status: 'ready',
+      value: { enabled: false, collapseDelay: 30, manualOpenProtection: false },
+    }),
     { ...READY, enabled: false, collapseDelaySeconds: 30, manualOpenProtection: false },
   )
   assert.deepEqual(
@@ -114,7 +106,11 @@ test('only the collapsed, non-manually-closed current block auto-expands', () =>
 })
 
 test('an older block is due only after its delay, and manual opens are protected', () => {
-  const due = (entryOverrides, recordOverrides, configOverrides) => rules.collapseDueAt(
+  const due = (
+    entryOverrides: Partial<BlockEntry>,
+    recordOverrides: Partial<BlockRecord>,
+    configOverrides: Partial<EffectiveConfig>,
+  ): number | undefined => rules.collapseDueAt(
     entry(entryOverrides), record(recordOverrides), { ...READY, ...configOverrides },
   )
   assert.equal(due({}, {}, {}), 3000)
@@ -131,15 +127,15 @@ test('an older block is due only after its delay, and manual opens are protected
 })
 
 test('collapse plans separate due blocks from the next future deadline', () => {
-  const entries = [
-    entry({ id: 'older-a', supersededAt: 500 }),
-    entry({ id: 'older-b', supersededAt: 1000 }),
+  const entries: BlockEntry[] = [
+    entry({ id: 'older-a' }),
+    entry({ id: 'older-b' }),
     entry({ id: 'current', isLatest: true, expanded: false }),
   ]
-  const records = new Map([
+  const records = new Map<string, BlockRecord>([
     ['older-a', record({ supersededAt: 500 })],
     ['older-b', record({ supersededAt: 1000 })],
-    ['current', record({ supersededAt: 0, expanded: false })],
+    ['current', record({ supersededAt: 0, lastExpanded: false })],
   ])
   // older-a is due at 500 + 2000 ms; older-b at 1000 + 2000 ms.
   const future = rules.planCollapses(entries, records, READY, 1500)
@@ -152,19 +148,19 @@ test('collapse plans separate due blocks from the next future deadline', () => {
 })
 
 test('settings drafts mirror accepted values and report dirtiness', () => {
-  assert.deepEqual(rules.settingsDraftFromValue({}), { enabled: true, delayText: '2', manualOpenProtection: true })
+  const draft: SettingsDraft = { enabled: true, delayText: '2', manualOpenProtection: true }
+  assert.deepEqual(rules.settingsDraftFromValue({}), draft)
   assert.deepEqual(
     rules.settingsDraftFromValue({ enabled: false, collapseDelay: 9, manualOpenProtection: false }),
     { enabled: false, delayText: '9', manualOpenProtection: false },
   )
-  const draft = { enabled: true, delayText: '2', manualOpenProtection: true }
   assert.equal(rules.settingsDraftIsDirty(draft, { enabled: true, collapseDelay: 2, manualOpenProtection: true }), false)
   assert.equal(rules.settingsDraftIsDirty({ ...draft, delayText: '3' }, { collapseDelay: 2 }), true)
   assert.equal(rules.settingsDraftIsDirty({ ...draft, enabled: false }, { collapseDelay: 2 }), true)
 })
 
 test('external accepted changes are adopted only for untouched fields', () => {
-  const draft = { enabled: true, delayText: '5', manualOpenProtection: true }
+  const draft: SettingsDraft = { enabled: true, delayText: '5', manualOpenProtection: true }
   const accepted = { enabled: false, collapseDelay: 2, manualOpenProtection: true }
   assert.deepEqual(
     rules.reconcileSettingsDraft(draft, accepted, { delayText: true }),
@@ -201,6 +197,11 @@ test('settings write plans only edited fields that differ from accepted values',
   // Invalid delay text produces no write; the form blocks Save instead.
   assert.deepEqual(
     rules.planSettingsWrite({ enabled: true, delayText: 'x', manualOpenProtection: true }, accepted, { delayText: true }),
+    [],
+  )
+  // Re-typing the accepted delay produces no write either.
+  assert.deepEqual(
+    rules.planSettingsWrite({ enabled: true, delayText: '2', manualOpenProtection: true }, accepted, { delayText: true }),
     [],
   )
   // An invalid delay alongside another edited field still plans that other op.
