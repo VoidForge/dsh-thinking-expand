@@ -111,3 +111,31 @@ the browser half as one self-contained classic-script IIFE.
   served, the plugin stays idle (it never acts on guessed defaults).
 - Verified against DSH `0.2.1-rc.2`; the browser half ships as one classic-script
   IIFE so a disable/enable cycle or HMR rebuild can execute it again safely.
+
+## License
+
+Thinking Focus is licensed under the **GNU Lesser General Public License,
+version 3** (SPDX: `LGPL-3.0-only`).
+
+- Full license text: [LICENSE.txt](./LICENSE.txt)
+- Canonical text: <https://www.gnu.org/licenses/lgpl-3.0.txt>
+- License overview: <https://www.gnu.org/licenses/lgpl-3.0.html>
+
+LGPLv3 incorporates the terms and conditions of the GNU General Public
+License, version 3 (GPLv3) by reference, supplemented by the additional
+permissions listed in the license; see
+<https://www.gnu.org/licenses/gpl-3.0.html>.
+
+## Disclaimer
+
+This software is provided **as-is**, without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose, and non-infringement. In no event shall the
+authors or copyright holders be liable for any claim, damages, or other
+liability, whether in an action of contract, tort, or otherwise, arising from,
+out of, or in connection with the software or the use or other dealings in the
+software.
+
+## Credit
+
+This plugin was created with **DeepSeek V4.1 Flash**.

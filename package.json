@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Keeps only the current thinking block expanded and collapses older ones after a configurable delay.",
+  "license": "LGPL-3.0-only",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "exports": {
@@ -22,7 +23,8 @@
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
-    "README.md"
+    "README.md",
+    "LICENSE.txt"
   ],
   "scripts": {
     "build": "npm run build:host && npm run build:client",
